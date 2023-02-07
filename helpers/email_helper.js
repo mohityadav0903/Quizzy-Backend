@@ -1,9 +1,10 @@
 const nodemailer = require('nodemailer');
 const jwtHelper = require('../helpers/jwt_helper');
 const dotenv = require('dotenv');
+const createError = require('http-errors');
 dotenv.config();
 
-const sendVerifyEmail = async (user) => {
+const sendVerifyEmail = async (user, req, res ) => {
     const EmailToken= await jwtHelper.signEmailToken(user);
 const transport= nodemailer.createTransport({
     service:'gmail',
@@ -19,17 +20,17 @@ const clientmail ={
     text: `Hi! There, You have recently visited 
     our website and entered your email.
     Please follow the given link to verify your email
-    http://localhost:5000/api/users/verify/${user.role}/${user._id}/${EmailToken} 
+    https://quizzy-backend.vercel.app/api/users/verify/${user.role}/${user._id}/${EmailToken} 
     Thanks`
 }
 transport.sendMail(clientmail,(err,info)=>{
     if(err){
         console.log(err);
-     return(err);
+        res.status(500).json({message:'Internal server error'});
     }
     else{
         console.log('email sent'+info.response);
-        return(info.response);
+        res.status(200).json({message:'Email sent successfully'});
     }
 
 }

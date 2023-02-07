@@ -18,7 +18,9 @@ router.post('/register', async (req, res, next) => {
             password: hashedPassword
         });
         const result = await user.save();
-      res.send(await sendVerifyEmail(result));  
+        //send the response to the user after email is sent
+        await sendVerifyEmail(result, req, res);
+
     } catch (error) {
         if (error.isJoi === true) error.status = 422;
         next(error);
