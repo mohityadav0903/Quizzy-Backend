@@ -36,7 +36,7 @@ router.post('/login', async (req, res, next) => {
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) throw createError.Unauthorized({statusText: 'Invalid credentials', status: 401});
         const isEmailVerified = user.isEmailVerified;
-        if (!isEmailVerified) throw createError.Unauthorized({statusText: 'Email not verified', status: 401});
+        if (!isEmailVerified) throw createError.Forbidden({statusText: 'Please verify your email', status: 403});
         const accessToken = await signAccessToken(user);
         res.status(200).send({ accessToken });
     } catch (error) {
