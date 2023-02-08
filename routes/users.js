@@ -34,9 +34,9 @@ router.post('/login', async (req, res, next) => {
         const user = await User.findOne({ email: email });
         if (!user) throw createError.NotFound('User not registered');
         const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) throw createError.Unauthorized('Username/password not valid');
+        if (!isMatch) throw createError.Unauthorized('Username/password not valid').message('Username/password not valid');
         const isEmailVerified = user.isEmailVerified;
-        if (!isEmailVerified) throw createError.Unauthorized('Please verify your email');
+        if (!isEmailVerified) throw createError.Unauthorized().message('Please verify your email');
         const accessToken = await signAccessToken(user);
         res.status(200).send({ accessToken });
     } catch (error) {
