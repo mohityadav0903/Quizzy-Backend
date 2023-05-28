@@ -44,6 +44,20 @@ router.post('/login', async (req, res, next) => {
     }
 });
 
+router.get('/forms/:id', async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const user = await User.findById(id);
+        if (!user) throw createError.NotFound('User not found');
+        const forms = user.forms;
+        res.status(200).send({ forms });
+
+    }
+    catch (error) { 
+        next(error);
+    }
+});
+
 router.get('/verify/:role/:id/:token', async (req, res, next) => {
     try {
         const { role, id, token } = req.params;

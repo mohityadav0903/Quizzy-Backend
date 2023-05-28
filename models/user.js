@@ -14,10 +14,6 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    isPermitted: {
-        type: Boolean,
-        default: false
-    },
     spam : {
         type: Boolean,
         default: false
@@ -30,6 +26,11 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: 'user'
     },
+    forms: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Form'
+    }],
+    
 },
     {
         timestamps: true
