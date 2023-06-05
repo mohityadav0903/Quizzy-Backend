@@ -7,6 +7,7 @@ dotenv.config();
 const userRoute = require('./routes/users');
 const adminRoute = require('./routes/admin');
 const formRoute = require('./routes/forms');
+const responseRoute = require('./routes/responses');
 app.use(cors());
 app.use(express.json());
 const mongoose = require('mongoose');
@@ -26,7 +27,7 @@ app.get('/', (req, res) => {
 app.use('/api/users', userRoute);
 app.use('/api/admin', adminRoute);
 app.use('/api/forms', formRoute);
-
+app.use('/api/responses', responseRoute);
 app.listen(port, () => {
     console.log(`Example app listening at http://localhost:${port}`);
     }

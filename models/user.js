@@ -30,7 +30,10 @@ const userSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Form'
     }],
-    
+    responses: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Form'
+    }]
 },
     {
         timestamps: true

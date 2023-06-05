@@ -1,13 +1,19 @@
 const router = require('express').Router();
 const Form = require('../models/form');
 const User = require('../models/user');
+const Response = require('../models/response');
 const { verifyAccessToken } = require('../helpers/jwt_helper');
 const createError = require('http-errors');
-const e = require('express');
 
 router.post('/create', async (req, res, next) => {
     try {
         const { formName, formType, createdBy } = req.body;
+        //if user has created 3 forms, he cannot create more
+        const user = await User.findById(createdBy);
+        if(user.forms.length >= 3)
+        {
+            throw createError.NotAcceptable('You cannot create more than 3 forms');
+        }
         //find all forms created by the user
         const oldForm = await Form.find().where('createdBy').equals(createdBy);
         let flag = false;
@@ -41,20 +47,49 @@ router.post('/create', async (req, res, next) => {
     }
 });
 
-router.get('/:id', async (req, res, next) => {
+router.get('/:id/:userId', async (req, res, next) => {
     try {
-        const { id } = req.params;
-        const form =await  Form.findById(id);
+        const { id,userId } = req.params;
+        const form = await Form.findById(id);
         if(!form) throw createError.NotFound('Form not found');
-        res.status(200).json({ form });
-
+        const user = await User.findById(userId);
+        if(!user) throw createError.NotFound('User not found');
+        let flag = false;
+        user.toObject().responses.forEach((response) => {
+            if(response == id)
+            {
+                flag = true;
+            }
+        });
+        if(flag)
+        {
+            throw createError.Conflict('Response already exists');
+        }
+        if(form.createdBy != userId)
+        {
+            const {questions} = form.toObject();
+            questions.forEach((question) => {
+                const {correctAnswer,...rest} = question;
+                questions[questions.indexOf(question)] = rest;
+            });
+             const newForm = {
+                ...form.toObject(),
+                questions
+             }
+             
+                res.status(200).json({ form: newForm });
+        }
+        else
+        {
+            res.status(200).json({ form });
+        }
     }
     catch (error) {
         next(error);
     }
 });
 
-router.get('/all/:userId', async (req, res, next) => {
+router.get('/:userId', async (req, res, next) => {
     try {
         const { userId } = req.params;
         const forms = await Form.find().where('createdBy').equals(userId);
@@ -84,7 +119,25 @@ router.delete('/:id', async (req, res, next) => {
     }
 });
 
-
+router.put('/:id', async (req, res, next) => {
+    try {
+        const { id} = req.params;
+        const form = await Form.findById(id);
+        if (!form) throw createError.NotFound('Form not found');
+        const {formName,description,theme,questions} = req.body;
+        const updatedForm = await Form.findByIdAndUpdate(id, {
+            formName,
+            description,
+            theme,
+            questions
+        }, { new: true });
+        res.status(200).json({ message: 'Form updated successfully', updatedForm }
+        );
+    }
+    catch (error) {
+        next(error);
+    }
+});
 
 
 module.exports = router;
