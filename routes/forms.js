@@ -55,6 +55,8 @@ router.get('/:id/:userId', async (req, res, next) => {
         const user = await User.findById(userId);
         if(!user) throw createError.NotFound('User not found');
         let flag = false;
+        if(form.createdBy != userId)
+        {
         user.toObject().responses.forEach((response) => {
             if(response == id)
             {
@@ -65,8 +67,6 @@ router.get('/:id/:userId', async (req, res, next) => {
         {
             throw createError.Conflict('Response already exists');
         }
-        if(form.createdBy != userId)
-        {
             const {questions} = form.toObject();
             questions.forEach((question) => {
                 const {correctAnswer,...rest} = question;
@@ -105,15 +105,26 @@ router.get('/:userId', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
     try {
         const { id } = req.params;
+        const {userId} = req.body;
         const form = await Form.findById(id);
         if (!form) throw createError.NotFound('Form not found');
-        await form.deleteOne().then(async (result) => {
-            await User.updateOne({ _id: form.createdBy }, { $pull: { forms: id } });
+        if(form.createdBy != userId)
+        {
+            throw createError.Unauthorized('You are not authorized to delete this form');
+        }
+        const responseUsers = await Response.find().where('formId').equals(id);
+        if(responseUsers)
+        {
+            responseUsers.forEach(async (responseUser) => {
+                await User.updateOne({ _id: responseUser.userId }, { $pull: { responses: id } });
+            });
+        }
+        await Form.findByIdAndDelete(id).then(async (result) => {
+             await User.updateOne({ _id: userId }, { $pull: { forms: id }, $pull: { responses: id } });
+             await Response.deleteMany({formId: id});
             res.status(200).json({ message: 'Form deleted successfully', result });
-        });
-        
-
-    }
+    });
+}
     catch (error) {
         next(error);
     }
@@ -124,11 +135,12 @@ router.put('/:id', async (req, res, next) => {
         const { id} = req.params;
         const form = await Form.findById(id);
         if (!form) throw createError.NotFound('Form not found');
-        const {formName,description,theme,questions} = req.body;
+        const {formName,description,theme,questions,time} = req.body;
         const updatedForm = await Form.findByIdAndUpdate(id, {
             formName,
             description,
             theme,
+            time,
             questions
         }, { new: true });
         res.status(200).json({ message: 'Form updated successfully', updatedForm }

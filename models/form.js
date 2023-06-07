@@ -40,6 +40,11 @@ const formSchema = new mongoose.Schema({
         headerImage: {type: String, default: ""},
         fontFamily: {type: String, default: "Arial"},
       },
+      time: {
+        type: Number,
+        default: 0
+        
+      },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Form', formSchema);
