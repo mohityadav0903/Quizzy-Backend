@@ -15,12 +15,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-const io = new Server(httpServer, {
-    cors: {
-        origin: '*',
-    }
-
-});
+const io = new Server(httpServer);
 io.on("connection", (socket) => {
     const { id } = socket.client;
     console.log("a user connected, id: ", id);
