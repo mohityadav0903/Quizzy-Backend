@@ -43,7 +43,6 @@ const formSchema = new mongoose.Schema({
       time: {
         type: Number,
         default: 0
-        
       },
 }, { timestamps: true });
 

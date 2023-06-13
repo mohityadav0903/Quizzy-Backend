@@ -52,7 +52,7 @@ router.get('/:id/:userId', async (req, res, next) => {
         const { id,userId } = req.params;
         const form = await Form.findById(id);
         if(!form) throw createError.NotFound('Form not found');
-        const user = await User.findById(userId);
+        let user = await User.findById(userId);
         if(!user) throw createError.NotFound('User not found');
         let flag = false;
         if(form.createdBy != userId)
@@ -67,6 +67,8 @@ router.get('/:id/:userId', async (req, res, next) => {
         {
             throw createError.Conflict('Response already exists');
         }
+             let responseTime =  user.toObject().responseTime.find((response) => response.formId == id);
+            
             const {questions} = form.toObject();
             questions.forEach((question) => {
                 const {correctAnswer,...rest} = question;
@@ -74,15 +76,36 @@ router.get('/:id/:userId', async (req, res, next) => {
             });
              const newForm = {
                 ...form.toObject(),
-                questions
+                questions,
+                responseTime: responseTime?.time
              }
-             
                 res.status(200).json({ form: newForm });
         }
         else
         {
             res.status(200).json({ form });
         }
+    }
+    catch (error) {
+        next(error);
+    }
+});
+
+router.post('/responseTime', async (req, res, next) => {
+    try {
+        const { formId, userId, responseTime } = req.body;
+        const user= await User.findById(userId);
+        if(!user) throw createError.NotFound('User not found');
+        const form = await Form.findById(formId);
+        if(!form) throw createError.NotFound('Form not found');
+        const time = user.toObject().responseTime.find((response) => response.formId == formId);
+        if(!time)
+        await User.updateOne({ _id: userId }, { $push: { responseTime: {formId,time:responseTime} } });
+        else
+        await User.updateOne({ _id: userId }, { $set: { responseTime: {formId,time:responseTime} } });
+        
+        res.status(200).json({ message: 'Response time updated successfully' });
+
     }
     catch (error) {
         next(error);

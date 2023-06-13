@@ -16,6 +16,10 @@ const responseSchema = new mongoose.Schema({
             ref: 'Form.questions',
             required: true
         },
+        questionText: {
+            type: String,
+            required: true
+        },
         answer: [{
             type: String,
             required: true

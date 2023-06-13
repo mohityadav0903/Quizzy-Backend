@@ -33,7 +33,17 @@ const userSchema = new mongoose.Schema({
     responses: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Form'
-    }]
+    }],
+    responseTime: [{
+        formId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Form'
+        },
+        time: {
+            type: Number,
+            default: 0
+        }
+    }],
 },
     {
         timestamps: true

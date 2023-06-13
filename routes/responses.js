@@ -4,6 +4,7 @@ const Form = require('../models/form');
 const User = require('../models/user');
 const { verifyAccessToken } = require('../helpers/jwt_helper');
 const createError = require('http-errors');
+const ExcelJS = require('exceljs');
 
 router.post('/create', async (req, res, next) => {
     try {
@@ -56,7 +57,8 @@ router.get('/:formId/:userId', async (req, res, next) => {
         const responseUsers = users.map((user) => {
             return {
                 email : user.email,
-                id : user._id
+                id : user._id,
+                responseTime : user.responseTime.filter((responseTime) => responseTime.formId == formId)[0].time
             }
         });
 
@@ -67,4 +69,114 @@ router.get('/:formId/:userId', async (req, res, next) => {
         next(error);
     }
 });
+
+router.delete('/:responseId/:userId', async (req, res, next) => {
+    try {
+        const { responseId, userId } = req.params;
+        const responseExist = await Response.findById(responseId);
+        if (!responseExist) throw createError.NotFound('Response not found');
+        const userExist = await User.findById(userId);
+        if (!userExist) throw createError.NotFound('User not found');
+        const formExist = await Form.findById(responseExist.toObject().formId);
+        if (!formExist) throw createError.NotFound('Form not found');
+        if (formExist.toObject().createdBy != userId) {
+            throw createError.Unauthorized('You are not authorized to delete this response');
+        }
+        const responseUser = await User.findById(responseExist.toObject().userId);
+        await responseUser.updateOne({ $pull: { responses: formExist.toObject()._id, responseTime: { formId: formExist.toObject()._id } } }).then(async () => {
+            await responseExist.deleteOne();
+            res.status(200).json({ message: 'Response deleted successfully' });
+        }
+        );
+    }
+    catch (error) {
+        next(error);
+    }
+});
+
+/*export all responses of a form in csv format*/
+router.get('/export/:formId/:userId', async (req, res, next) => {
+    try {
+        const { formId, userId } = req.params;
+        const formExists = await Form.findById(formId);
+        if (!formExists) throw createError.NotFound('Form not found');
+        const userExists = await User.findById(userId);
+        if (!userExists) throw createError.NotFound('User not found');
+        if (formExists.toObject().createdBy != userId) {
+            throw createError.Unauthorized('You are not authorized to export responses of this form');
+        }
+        const responses = await Response.find().where('formId').equals(formId);
+        if (!responses) throw createError.NotFound('No responses found');
+      
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet(`${formExists.toObject().formName + ' responses'}`);
+        worksheet.columns = [
+            {header:'S.No',key:'sno',width:10},
+            { header: 'Email', key: 'email', width: 30},
+            { header: 'Response Time', key: 'responseTime', width: 30 },
+            { header: 'Submitted On', key: 'submittedOn', width: 30 },
+            ...formExists.toObject().questions.map((question) => {
+                return { header: question.questionText, key: question.questionText, width: 30 }
+            })
+        ];
+        worksheet.getRow(1).font = { bold: true };
+        worksheet.getRow(1).alignment = { horizontal: 'center' };
+        worksheet.getRow(1).fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFD9D9D9' }
+        };
+        worksheet.getColumn(1).alignment = { horizontal: 'center' };
+        worksheet.getColumn(1).font = { bold: true };
+        worksheet.getColumn(1).fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFD9D9D9' }
+        };
+
+
+        let sno = 1;
+        const getFormattedDate = (date) => {
+            const d = new Date(date);
+            return d.toLocaleString();
+        }
+        const getResponseTime = (responseTime) => {
+            const minutes = Math.floor(responseTime / 60);
+            const seconds = responseTime % 60;
+            return `${minutes} minutes ${seconds} seconds`;
+        }
+        const responseUsers = await User.find().where('_id').in(responses.map((response) => response.userId));
+        const responseUsersMap = responseUsers.reduce((map, user) => {
+            map[user._id] = user;
+            return map;
+        }, {});
+        responses.forEach((response) => {
+            const user = responseUsersMap[response.toObject().userId];
+            const responseTime = getResponseTime(user?.responseTime.filter((responseTime) => responseTime.formId == formId)[0].time);
+            const submittedOn = getFormattedDate(response.toObject().createdAt);
+            const answers = response.toObject().answers;
+            const row = {
+                sno,
+                email: user?.email,
+                responseTime,
+                submittedOn
+            };
+            answers.forEach((answer) => {
+                row[answer.questionText] = answer.answer;
+            });
+            worksheet.addRow(row);
+            sno++;
+        });
+        
+        const fileName = `${formExists.toObject().formName + ' responses'}.xlsx`;
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+        await workbook.xlsx.write(res);
+        res.status(200).end();
+    }
+    catch (error) {
+        next(error);
+    }
+});
+
 module.exports = router;
