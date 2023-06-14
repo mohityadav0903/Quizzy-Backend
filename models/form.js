@@ -23,7 +23,10 @@ const formSchema = new mongoose.Schema({
           optionText: String,
           optionImage: {type: String, default: ""},
         }],
-        correctAnswer: {type: String, default: ""},
+        correctAnswers: [{
+          type: String,
+          default: ""
+        }],
         marks: {type: Number, default: 0},
         negativeMarks: {type: Number, default: 0}
       }],

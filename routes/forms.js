@@ -71,7 +71,7 @@ router.get('/:id/:userId', async (req, res, next) => {
             
             const {questions} = form.toObject();
             questions.forEach((question) => {
-                const {correctAnswer,...rest} = question;
+                const {correctAnswers,...rest} = question;
                 questions[questions.indexOf(question)] = rest;
             });
              const newForm = {
