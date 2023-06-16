@@ -103,7 +103,6 @@ router.post('/responseTime', async (req, res, next) => {
         await User.updateOne({ _id: userId }, { $push: { responseTime: {formId,time:responseTime} } });
         else
         await User.updateOne({ _id: userId }, { $set: { responseTime: {formId,time:responseTime} } });
-        
         res.status(200).json({ message: 'Response time updated successfully' });
 
     }

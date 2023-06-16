@@ -23,10 +23,46 @@ router.post('/create', async (req, res, next) => {
         if (flag) {
             throw createError.Conflict('Response already exists');
         }
+        //calculate score
+        let score = 0;
+        const questions = formExist.toObject().questions;
+        questions.forEach((question) => {
+            answers.forEach((answer) => {
+                if (answer.questionId == question._id) {
+                    if (question.type == 'Checkboxes' || question.type == 'Multiple Choice') {
+                        if (question.correctAnswers.length == answer.answer.length) {
+                            let flag2= true;
+                            question.correctAnswers.forEach((correctAnswer) => {
+                                let flag3 = false;
+                                answer.answer.forEach((ans) => {
+                                    if (ans == correctAnswer) {
+                                        flag3 = true;
+                                    }
+                                });
+                                if (!flag3) {
+                                    flag2 = false;
+                                }
+                            });
+                            if (flag2) {
+                                score += question.marks;
+                            }
+                        }
+                    }
+                    else{
+                        if(question.correctAnswers[0] == answer.answer[0])
+                        {
+                            score += question.marks;
+                        }
+                    }
+                } 
+            })
+        });
+      console.log(score);      
         const response = new Response({
             formId,
             userId,
-            answers
+            answers,
+            score
         });
         await response.save().then(async (result) => {
             await User.updateOne({ _id: userId }, { $push: { responses: result.formId }});
@@ -107,7 +143,7 @@ router.get('/export/:formId/:userId', async (req, res, next) => {
         }
         const responses = await Response.find().where('formId').equals(formId);
         if (!responses) throw createError.NotFound('No responses found');
-      
+         const  questions = formExists.toObject().questions;
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet(`${formExists.toObject().formName + ' responses'}`);
         worksheet.columns = [
@@ -115,8 +151,21 @@ router.get('/export/:formId/:userId', async (req, res, next) => {
             { header: 'Email', key: 'email', width: 30},
             { header: 'Response Time', key: 'responseTime', width: 30 },
             { header: 'Submitted On', key: 'submittedOn', width: 30 },
+            { header: 'Score', key: 'score', width: 10},
             ...formExists.toObject().questions.map((question) => {
-                return { header: question.questionText, key: question.questionText, width: 30 }
+                //if two questions have same question text then add question id to the question text
+                let questionText = question.questionText;
+                let count = 0;
+                formExists.toObject().questions.forEach((q) => {
+                    if (q.questionText == questionText) {
+                        count++;
+                    }
+                }
+                );
+                if (count > 1) {
+                    questionText += `(${question._id})`;
+                }
+                return { header: questionText, key: questionText, width: 50 };
             })
         ];
         worksheet.getRow(1).font = { bold: true };
@@ -150,19 +199,50 @@ router.get('/export/:formId/:userId', async (req, res, next) => {
             map[user._id] = user;
             return map;
         }, {});
-        responses.forEach((response) => {
+       
+                responses.forEach((response) => {
             const user = responseUsersMap[response.toObject().userId];
             const responseTime = getResponseTime(user?.responseTime.filter((responseTime) => responseTime.formId == formId)[0].time);
             const submittedOn = getFormattedDate(response.toObject().createdAt);
-            const answers = response.toObject().answers;
+            const totalScore = formExists.toObject().questions.reduce((totalScore, question) => {
+                 totalScore += question.marks;
+                    return totalScore;
+                }, 0);
+            const score = response.toObject().score + '/' + totalScore;
+            let answers = response.toObject().answers;
+            questions.forEach((question) => {
+                let answer = answers.filter((ans) => ans.questionId.toString() == question._id.toString())[0];
+                console.log(answer)
+                if(question.type == 'Checkboxes' || question.type == 'Multiple Choice'){
+                    answer.answer = answer.answer.map((ans) =>{
+                        return question.options.filter((option) => option._id.toString() == ans)[0].optionText;
+                    });
+                }
+            });
+          
+
             const row = {
                 sno,
                 email: user?.email,
                 responseTime,
-                submittedOn
+                submittedOn,
+                score: score
             };
-            answers.forEach((answer) => {
-                row[answer.questionText] = answer.answer;
+           answers.forEach((answer) => {
+                //if two questions have same question text then add question id to the question text
+                let questionText = questions.filter((question) => question._id.toString() == answer.questionId.toString())[0].questionText;
+                let count = 0;
+                questions.forEach((q) => {
+                    if (q.questionText == questionText) {
+                        count++;
+                    }
+                }
+                );
+                if (count > 1) {
+                    questionText += `(${answer.questionId})`;
+                }
+                row[questionText] = answer.answer;
+
             });
             worksheet.addRow(row);
             sno++;
