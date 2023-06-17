@@ -25,6 +25,7 @@ router.post('/create', async (req, res, next) => {
         }
         //calculate score
         let score = 0;
+        let newAnswers = [];
         const questions = formExist.toObject().questions;
         questions.forEach((question) => {
             answers.forEach((answer) => {
@@ -57,11 +58,30 @@ router.post('/create', async (req, res, next) => {
                 } 
             })
         });
-      console.log(score);      
+      console.log(score);  
+       // change the optionId in answers for Checkboxes and Multiple Choice questions to optionText
+       newAnswers = answers.map((answer) => {
+            questions.forEach((question) => {
+                if (answer.questionId == question._id) {
+                    if (question.type == 'Checkboxes' || question.type == 'Multiple Choice') {
+                        let newAnswer = [];
+                        answer.answer.forEach((ans) => {
+                            question.options.forEach((option) => {
+                                if (option._id == ans) {
+                                    newAnswer.push(option.optionText);
+                                }
+                            });
+                        });
+                        answer.answer = newAnswer;
+                    }
+                }
+            });
+            return answer;
+        });
         const response = new Response({
             formId,
             userId,
-            answers,
+            answers: newAnswers,
             score
         });
         await response.save().then(async (result) => {
@@ -143,7 +163,6 @@ router.get('/export/:formId/:userId', async (req, res, next) => {
         }
         const responses = await Response.find().where('formId').equals(formId);
         if (!responses) throw createError.NotFound('No responses found');
-         const  questions = formExists.toObject().questions;
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet(`${formExists.toObject().formName + ' responses'}`);
         worksheet.columns = [
@@ -153,19 +172,7 @@ router.get('/export/:formId/:userId', async (req, res, next) => {
             { header: 'Submitted On', key: 'submittedOn', width: 30 },
             { header: 'Score', key: 'score', width: 10},
             ...formExists.toObject().questions.map((question) => {
-                //if two questions have same question text then add question id to the question text
-                let questionText = question.questionText;
-                let count = 0;
-                formExists.toObject().questions.forEach((q) => {
-                    if (q.questionText == questionText) {
-                        count++;
-                    }
-                }
-                );
-                if (count > 1) {
-                    questionText += `(${question._id})`;
-                }
-                return { header: questionText, key: questionText, width: 50 };
+                return { header: question.questionText, key: question.questionText, width: 30 }
             })
         ];
         worksheet.getRow(1).font = { bold: true };
@@ -209,16 +216,7 @@ router.get('/export/:formId/:userId', async (req, res, next) => {
                     return totalScore;
                 }, 0);
             const score = response.toObject().score + '/' + totalScore;
-            let answers = response.toObject().answers;
-            questions.forEach((question) => {
-                let answer = answers.filter((ans) => ans.questionId.toString() == question._id.toString())[0];
-                console.log(answer)
-                if(question.type == 'Checkboxes' || question.type == 'Multiple Choice'){
-                    answer.answer = answer.answer.map((ans) =>{
-                        return question.options.filter((option) => option._id.toString() == ans)[0].optionText;
-                    });
-                }
-            });
+            const answers = response.toObject().answers;
           
 
             const row = {
@@ -229,20 +227,7 @@ router.get('/export/:formId/:userId', async (req, res, next) => {
                 score: score
             };
            answers.forEach((answer) => {
-                //if two questions have same question text then add question id to the question text
-                let questionText = questions.filter((question) => question._id.toString() == answer.questionId.toString())[0].questionText;
-                let count = 0;
-                questions.forEach((q) => {
-                    if (q.questionText == questionText) {
-                        count++;
-                    }
-                }
-                );
-                if (count > 1) {
-                    questionText += `(${answer.questionId})`;
-                }
-                row[questionText] = answer.answer;
-
+                row[answer.questionText] = answer.answer;
             });
             worksheet.addRow(row);
             sno++;
