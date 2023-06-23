@@ -158,13 +158,55 @@ router.put('/:id', async (req, res, next) => {
         const form = await Form.findById(id);
         if (!form) throw createError.NotFound('Form not found');
         const {formName,description,theme,questions,time} = req.body;
-        const updatedForm = await Form.findByIdAndUpdate(id, {
-            formName,
-            description,
-            theme,
-            time,
-            questions
-        }, { new: true });
+        let formNameExists = false;
+        let descriptionExists = false;
+        let themeExists = false;
+        let questionsExists = false;
+        let timeExists = false;
+
+        //check which fields are updated
+       if(formName != form.toObject().formName)
+         {
+            formNameExists = true;
+            }
+        if(description != form.toObject().description)
+        {
+            descriptionExists = true;
+        }
+        if(theme != form.toObject().theme)
+        {
+            themeExists = true;
+        }
+        if(questions != form.toObject().questions)
+        {
+            questionsExists = true;
+        }
+        if(time != form.toObject().time)
+        {
+            timeExists = true;
+        }
+        //if values exist then update them
+        if(formNameExists)
+        {
+            await Form.updateOne({ _id: id }, { $set: { formName: formName } });
+        }
+        if(descriptionExists)
+        {
+           await Form.updateOne({ _id: id }, { $set: { description: description } });
+        }
+        if(themeExists)
+        {
+            await Form.updateOne({ _id: id }, { $set: { theme: theme } });
+        }
+        if(questionsExists)
+        {
+            await Form.updateOne({ _id: id }, { $set: { questions: questions } });
+        }
+        if(timeExists)
+        {
+            await Form.updateOne({ _id: id }, { $set: { time: time } });
+        }
+        const updatedForm = await Form.findById(id);
         res.status(200).json({ message: 'Form updated successfully', updatedForm }
         );
     }

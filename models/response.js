@@ -20,6 +20,20 @@ const responseSchema = new mongoose.Schema({
             type: String,
             required: true
         },
+        questionType: {
+            type: String,
+            required: true
+        },
+        options: [{
+            optionText: {
+                type: String,
+            },
+            optionImage: {
+                type: String,
+                default: ""
+            }
+
+        }],
         answer: [{
             type: String,
             required: true

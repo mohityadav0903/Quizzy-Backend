@@ -27,6 +27,8 @@ router.post('/create', async (req, res, next) => {
         let score = 0;
         let newAnswers = [];
         const questions = formExist.toObject().questions;
+        if(formExist.toObject().formType == 'Quiz')
+        {
         questions.forEach((question) => {
             answers.forEach((answer) => {
                 if (answer.questionId == question._id) {
@@ -58,6 +60,7 @@ router.post('/create', async (req, res, next) => {
                 } 
             })
         });
+        }
       console.log(score);  
        // change the optionId in answers for Checkboxes and Multiple Choice questions to optionText
        newAnswers = answers.map((answer) => {
