@@ -31,7 +31,7 @@ router.post('/create', async (req, res, next) => {
         {
         questions.forEach((question) => {
             answers.forEach((answer) => {
-                if (answer.questionId == question._id) {
+                if (answer.questionId == question.uniqueId) {
                     if (question.type == 'Checkboxes' || question.type == 'Multiple Choice') {
                         if (question.correctAnswers.length == answer.answer.length) {
                             let flag2= true;
@@ -65,7 +65,7 @@ router.post('/create', async (req, res, next) => {
        // change the optionId in answers for Checkboxes and Multiple Choice questions to optionText
        newAnswers = answers.map((answer) => {
             questions.forEach((question) => {
-                if (answer.questionId == question._id) {
+                if (answer.questionId == question.uniqueId) {
                     if (question.type == 'Checkboxes' || question.type == 'Multiple Choice') {
                         let newAnswer = [];
                         answer.answer.forEach((ans) => {
@@ -175,7 +175,7 @@ router.get('/export/:formId/:userId', async (req, res, next) => {
             { header: 'Submitted On', key: 'submittedOn', width: 30 },
             { header: 'Score', key: 'score', width: 10},
             ...formExists.toObject().questions.map((question) => {
-                return { header: question.questionText, key: question.questionText, width: 30 }
+                return { header: question.questionText, key: question.uniqueId, width: 30 }
             })
         ];
         worksheet.getRow(1).font = { bold: true };
@@ -230,7 +230,7 @@ router.get('/export/:formId/:userId', async (req, res, next) => {
                 score: score
             };
            answers.forEach((answer) => {
-                row[answer.questionText] = answer.answer;
+                row[answer.questionId] = answer.answer;
             });
             worksheet.addRow(row);
             sno++;

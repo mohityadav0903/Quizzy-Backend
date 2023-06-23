@@ -41,7 +41,6 @@ router.post('/create', async (req, res, next) => {
              await User.updateOne({ _id: createdBy }, { $push: { forms: result._id } });
             res.status(200).json({ message: 'Form created successfully', result });
         });
-
     } catch (error) {
         next(error);
     }
@@ -104,7 +103,6 @@ router.post('/responseTime', async (req, res, next) => {
         else
         await User.updateOne({ _id: userId }, { $set: { responseTime: {formId,time:responseTime} } });
         res.status(200).json({ message: 'Response time updated successfully' });
-
     }
     catch (error) {
         next(error);
@@ -139,11 +137,13 @@ router.delete('/:id', async (req, res, next) => {
         {
             responseUsers.forEach(async (responseUser) => {
                 await User.updateOne({ _id: responseUser.userId }, { $pull: { responses: id } });
+                await User.updateOne({ _id: responseUser.userId }, { $pull: { responseTime: {formId:id} } });
             });
         }
+        await User.updateOne({ _id: userId }, { $pull: { forms: id } });
+        await User.updateOne({ _id: userId }, { $pull: { responseTime: {formId:id} } });
+        await Response.deleteMany({formId: id});
         await Form.findByIdAndDelete(id).then(async (result) => {
-             await User.updateOne({ _id: userId }, { $pull: { forms: id }, $pull: { responses: id } });
-             await Response.deleteMany({formId: id});
             res.status(200).json({ message: 'Form deleted successfully', result });
     });
 }

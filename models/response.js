@@ -12,8 +12,7 @@ const responseSchema = new mongoose.Schema({
         },
     answers: [{
         questionId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Form.questions',
+            type: String,
             required: true
         },
         questionText: {

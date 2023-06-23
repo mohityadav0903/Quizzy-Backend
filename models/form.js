@@ -16,6 +16,7 @@ const formSchema = new mongoose.Schema({
       },
       questions : [{
         type: {type: String},
+        uniqueId: {type: String, default: ""},
         required: {type: Boolean, default: false},
         questionText: String,
         questionImage: {type: String, default: ""},
